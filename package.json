@@ -1,0 +1,11 @@
+{
+  "name": "govt-job-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simple personal tracker for Indian government job notifications",
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch-news.mjs",
+    "start": "npm run fetch && open index.html"
+  }
+}

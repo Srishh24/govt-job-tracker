@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Govt Job Tracker</title>
+  <meta name="theme-color" content="#1f4e8c">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Govt Job Tracker</h1>
+    <nav class="tabs">
+      <a href="#all" id="tab-all">All jobs <span class="count" id="count-all"></span></a>
+      <a href="#mine" id="tab-mine">My forms <span class="count" id="count-mine"></span></a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ALL JOBS -->
+    <section id="view-all" hidden>
+      <details class="panel" id="profile-panel">
+        <summary>My details <span class="muted" id="profile-summary"></span></summary>
+        <div class="profile-grid">
+          <label>Date of birth <input type="date" id="p-dob"></label>
+          <label>Highest qualification
+            <select id="p-qual">
+              <option value="">Not set</option>
+              <option>10th</option>
+              <option>12th</option>
+              <option>Diploma</option>
+              <option>Graduate</option>
+              <option>Post Graduate</option>
+            </select>
+          </label>
+          <label>Age relaxation (years)
+            <select id="p-relax">
+              <option value="0">None (General / EWS)</option>
+              <option value="3">3 (OBC)</option>
+              <option value="5">5 (SC / ST)</option>
+              <option value="10">10 (PwBD)</option>
+            </select>
+          </label>
+        </div>
+        <p class="muted small">Saved only in this browser. Used to hide jobs you can't apply for.</p>
+      </details>
+
+      <div class="filters">
+        <input type="search" id="f-search" placeholder="Search jobs, e.g. railway, clerk, Delhi">
+        <select id="f-category"><option value="">All categories</option></select>
+        <select id="f-sort">
+          <option value="closing">Closing soonest</option>
+          <option value="newest">Newest first</option>
+        </select>
+        <label class="check"><input type="checkbox" id="f-eligible"> Only jobs I'm eligible for</label>
+        <label class="check"><input type="checkbox" id="f-closed"> Show closed forms</label>
+      </div>
+
+      <div id="job-list"></div>
+      <p class="center"><button class="link" id="toggle-removed" hidden></button></p>
+      <div id="removed-list" hidden></div>
+
+      <details class="panel" id="headlines-panel">
+        <summary>Latest notifications in the news <span class="muted" id="headlines-meta"></span></summary>
+        <p class="muted small">Auto-fetched headlines. Some may not be in the list above yet. Always confirm on the official site.</p>
+        <ul class="news" id="headlines"></ul>
+      </details>
+    </section>
+
+    <!-- MY FORMS -->
+    <section id="view-mine" hidden>
+      <p class="muted small">Forms you've filled. The nearest exam is at the top.</p>
+      <div id="mine-list"></div>
+    </section>
+  </main>
+
+  <footer class="muted small">
+    <span id="data-info"></span>
+    · Details are collected from public notices and news, so check the official site before acting.
+  </footer>
+
+  <script src="data/jobs.js"></script>
+  <script src="data/feed.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

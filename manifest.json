@@ -1,0 +1,9 @@
+{
+  "name": "Govt Job Tracker",
+  "short_name": "Govt Jobs",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#1f4e8c",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
