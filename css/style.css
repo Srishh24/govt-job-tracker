@@ -72,6 +72,9 @@ input[type=search], input[type=date], select {
 .badge.closed { background: var(--red-bg); color: var(--red); }
 .badge.new { background: var(--blue); color: #fff; margin-left: 4px; }
 .badge.admit { background: var(--amber-bg); color: var(--amber); }
+.badge.auto { background: #eef0f3; color: var(--muted); margin-left: 4px; font-weight: 500; }
+.card.draft { border-style: dashed; }
+.card.draft.filled { border-left-style: solid; }
 
 .dates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
 .dates div { background: var(--bg); border-radius: 8px; padding: 6px 8px; }

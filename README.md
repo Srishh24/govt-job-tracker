@@ -22,7 +22,9 @@ Or just double-click `index.html`. Run `npm run fetch` any time to refresh news 
 | `data/jobs.js` | The job list with dates, salary, eligibility, syllabus, notes | You, by hand (copy a block, edit it) |
 | `data/feed.js` | News headlines and per-exam updates from Google News RSS | `npm run fetch` (automatic) |
 
-New notifications show up first in **Latest notifications in the news** at the bottom of *All jobs*. If one interests you, add it to `data/jobs.js`. Always confirm dates on the official site, because news sites sometimes disagree.
+New notifications also become **Auto-added** job cards (dashed border). The fetch script reads the organisation, number of posts and any dates mentioned in the headline. Salary, eligibility and syllabus say "Not added yet". To give a job full details, add it to `data/jobs.js` with a `newsQuery`; the auto-added card for it then stops appearing. Auto-added cards drop off after their last date passes, or after 30 days without news. If you marked one as filled, your browser keeps a copy on *My forms*.
+
+Always confirm dates on the official site, because news sites sometimes disagree.
 
 ## Share with friends (free)
 

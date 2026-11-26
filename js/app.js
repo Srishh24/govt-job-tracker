@@ -1,17 +1,27 @@
 (function () {
   "use strict";
 
-  const JOBS = (window.JOBS_DATA && window.JOBS_DATA.jobs) || [];
+  const CURATED = (window.JOBS_DATA && window.JOBS_DATA.jobs) || [];
   const FEED = window.FEED_DATA || { headlines: [], jobNews: {} };
+  const DRAFTS = FEED.drafts || [];
   const STORE_KEY = "govt-job-tracker:v1";
   const QUAL_RANK = { "10th": 1, "12th": 2, "Diploma": 3, "Graduate": 4, "Post Graduate": 5 };
   const DAY = 86400000;
 
   // ---------- storage ----------
   const state = Object.assign(
-    { filled: [], removed: [], profile: {}, filters: {}, lastVisit: null },
+    { filled: [], removed: [], profile: {}, filters: {}, lastVisit: null, savedDrafts: {} },
     safeParse(localStorage.getItem(STORE_KEY))
   );
+
+  // Auto-added jobs disappear from the feed after a while. Keep a saved copy of the ones you filled
+  // so they stay on "My forms".
+  const liveIds = new Set([...CURATED, ...DRAFTS].map((j) => j.id));
+  const JOBS = [
+    ...CURATED,
+    ...DRAFTS,
+    ...Object.values(state.savedDrafts).filter((d) => !liveIds.has(d.id) && state.filled.includes(d.id)),
+  ];
   // Anything newer than the previous visit is marked "New". First visit: last 3 days.
   const prevVisit = state.lastVisit ? Date.parse(state.lastVisit) : Date.now() - 3 * DAY;
   state.lastVisit = new Date().toISOString();
@@ -62,6 +72,7 @@
     const start = daysUntil(job.formStart);
     const end = daysUntil(job.formEnd);
     if (start != null && start > 0) return { key: "upcoming", cls: "", text: `Opens ${fmt(job.formStart)}` };
+    if (end == null && job.draft) return { key: "open", cls: "", text: "Check dates" };
     if (end == null) return { key: "open", cls: "open", text: "Form open" };
     if (end < 0) return { key: "closed", cls: "closed", text: "Form closed" };
     if (end === 0) return { key: "open", cls: "soon", text: "Last day today" };
@@ -98,6 +109,9 @@
   function examText(job) {
     return job.examDateText || (job.examDate ? fmt(job.examDate) : "TBA");
   }
+  function siteLink(job) {
+    return `<a href="${safeUrl(job.officialLink)}" target="_blank" rel="noopener">${job.draft ? "Read news ↗" : "Official site ↗"}</a>`;
+  }
   function chips(list) {
     return list && list.length
       ? `<div class="chips">${list.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>` : "";
@@ -110,33 +124,36 @@
     const filled = isFilled(job.id);
     const newBadge = isNew(job.addedOn) ? `<span class="badge new">New</span>` : "";
     const vac = job.vacancies ? ` · ${Number(job.vacancies).toLocaleString("en-IN")} posts` : "";
+    const autoBadge = job.draft ? `<span class="badge auto">Auto-added</span>` : "";
+    const missing = job.draft ? "Not added yet" : "TBA";
     return `
-      <article class="card ${filled ? "filled" : ""}">
+      <article class="card ${filled ? "filled" : ""} ${job.draft ? "draft" : ""}">
         <div class="card-head">
           <div>
-            <h2>${esc(job.title)}${newBadge}</h2>
-            <div class="org">${esc(job.org)} · ${esc(job.location)}${vac}</div>
+            <h2>${esc(job.title)}${newBadge}${autoBadge}</h2>
+            <div class="org">${esc(job.org)} · ${esc(job.location)} · ${esc(job.category)}${vac}</div>
           </div>
           <span class="badge ${st.cls}">${esc(st.text)}</span>
         </div>
         <div class="dates">
-          <div><span>Form start</span><b>${job.formStart ? fmt(job.formStart) : "Open now"}</b></div>
-          <div><span>Form end</span><b>${fmt(job.formEnd)}</b></div>
-          <div><span>Exam</span><b>${esc(examText(job))}</b></div>
+          <div><span>Form start</span><b>${job.formStart ? fmt(job.formStart) : job.draft ? missing : "Open now"}</b></div>
+          <div><span>Form end</span><b>${job.formEnd ? fmt(job.formEnd) : missing}</b></div>
+          <div><span>Exam</span><b>${job.draft && job.examDate ? fmt(job.examDate) : esc(examText(job))}</b></div>
         </div>
         ${chips(job.examLevels)}
         <dl class="facts">
           <dt>Salary</dt><dd>${esc(job.salary)}</dd>
           <dt>Eligibility</dt><dd>${esc(job.eligibility)}
             ${el.ok === false ? `<div class="warn small">You may not be eligible: ${esc(el.reasons.join("; "))}</div>` : ""}</dd>
-          <dt>Work</dt><dd>${esc(job.description)}</dd>
+          <dt>${job.draft ? "Headline" : "Work"}</dt><dd>${esc(job.description)}
+            ${job.draft ? `<div class="muted small">Details were read from a news headline. Check the news or official notification.</div>` : ""}</dd>
         </dl>
         <div class="actions">
           ${removedView
             ? `<button class="btn" data-act="restore" data-id="${esc(job.id)}">Restore</button>`
             : `<button class="btn primary ${filled ? "on" : ""}" data-act="fill" data-id="${esc(job.id)}">${filled ? "✓ Form filled" : "Mark as filled"}</button>
                <button class="btn" data-act="remove" data-id="${esc(job.id)}">✕ Not for me</button>`}
-          <a href="${safeUrl(job.officialLink)}" target="_blank" rel="noopener">Official site ↗</a>
+          ${siteLink(job)}
         </div>
       </article>`;
   }
@@ -147,8 +164,10 @@
     const onlyEligible = $("f-eligible").checked;
     const showClosed = $("f-closed").checked;
     const sort = $("f-sort").value;
+    const showDrafts = $("f-drafts").checked;
 
     let list = JOBS.filter((j) => !isRemoved(j.id));
+    if (!showDrafts) list = list.filter((j) => !j.draft || isFilled(j.id));
     if (!showClosed) list = list.filter((j) => formStatus(j).key !== "closed");
     if (cat) list = list.filter((j) => j.category === cat);
     if (onlyEligible) list = list.filter((j) => eligibility(j).ok !== false);
@@ -207,9 +226,10 @@
       text: u.text, url: u.url, date: u.date, source: "Saved note",
       sortDate: parseDay(u.date) || new Date(0),
     }));
-    const auto = ((FEED.jobNews || {})[job.id] || []).map((n) => ({
-      title: n.title, url: n.url, date: n.date, source: n.source, sortDate: new Date(n.date),
-    }));
+    const seen = new Set();
+    const auto = [...((FEED.jobNews || {})[job.id] || []), ...(job.sources || [])]
+      .filter((n) => !seen.has(n.title) && seen.add(n.title))
+      .map((n) => ({ title: n.title, url: n.url, date: n.date, source: n.source, sortDate: new Date(n.date) }));
     return manual.concat(auto).sort((a, b) => b.sortDate - a.sortDate);
   }
 
@@ -249,7 +269,7 @@
                      : `<p class="muted small">No updates yet.</p>`}
         <div class="actions">
           <button class="btn" data-act="fill" data-id="${esc(job.id)}">Unmark as filled</button>
-          <a href="${safeUrl(job.officialLink)}" target="_blank" rel="noopener">Official site ↗</a>
+          ${siteLink(job)}
         </div>
       </article>`;
   }
@@ -302,6 +322,7 @@
     $("f-eligible").checked = !!state.filters.eligible;
     $("f-closed").checked = !!state.filters.closed;
     $("f-sort").value = state.filters.sort || "closing";
+    $("f-drafts").checked = state.filters.drafts !== false;
     if (!state.profile.dob && !state.profile.qual) $("profile-panel").open = true;
     renderProfileSummary();
 
@@ -309,8 +330,9 @@
       state.profile = { dob: $("p-dob").value, qual: $("p-qual").value, relax: $("p-relax").value };
       save(); renderProfileSummary(); renderAll();
     }));
-    ["f-eligible", "f-closed", "f-sort", "f-category"].forEach((id) => $(id).addEventListener("change", () => {
-      state.filters = { eligible: $("f-eligible").checked, closed: $("f-closed").checked, sort: $("f-sort").value };
+    ["f-eligible", "f-closed", "f-drafts", "f-sort", "f-category"].forEach((id) => $(id).addEventListener("change", () => {
+      state.filters = { eligible: $("f-eligible").checked, closed: $("f-closed").checked,
+        drafts: $("f-drafts").checked, sort: $("f-sort").value };
       save(); renderAll();
     }));
     $("f-search").addEventListener("input", renderAll);
@@ -322,7 +344,12 @@
       const b = e.target.closest("button[data-act]");
       if (!b) return;
       const id = b.dataset.id;
-      if (b.dataset.act === "fill") toggleIn(state.filled, id);
+      if (b.dataset.act === "fill") {
+        toggleIn(state.filled, id);
+        const job = JOBS.find((j) => j.id === id);
+        if (job && job.draft && isFilled(id)) state.savedDrafts[id] = job;
+        if (!isFilled(id)) delete state.savedDrafts[id];
+      }
       if (b.dataset.act === "remove") { toggleIn(state.removed, id); state.filled = state.filled.filter((x) => x !== id); }
       if (b.dataset.act === "restore") toggleIn(state.removed, id);
       save(); route();
@@ -334,7 +361,8 @@
     const fetched = FEED.fetchedAt ? new Date(FEED.fetchedAt) : null;
     const stale = fetched && Date.now() - fetched > 2 * DAY;
     $("data-info").innerHTML =
-      `Job list edited ${esc(fmt(window.JOBS_DATA && window.JOBS_DATA.lastEdited))}` +
+      `${CURATED.length} checked jobs (edited ${esc(fmt(window.JOBS_DATA && window.JOBS_DATA.lastEdited))})` +
+      ` · ${DRAFTS.length} auto-added from news` +
       ` · News fetched ${fetched ? esc(fetched.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })) : "never"}` +
       (stale ? ` <span class="warn">(old, run npm run fetch)</span>` : "");
 
